@@ -2,6 +2,10 @@ name: "🖥️ MACBRUH-RDP Workflow"
 
 on:
   workflow_dispatch:
+    inputs:
+      code:
+        description: 'Chrome Remote Desktop Auth Code'
+        required: true
 
 jobs:
   macbruh_rdp:
@@ -47,10 +51,12 @@ jobs:
         if (!(Test-Path $chromePath)) {
           $chromePath = "${env:ProgramFiles}\Google\Chrome\Application\chrome.exe"
         }
-        $wshshell = New-Object -ComObject WScript.Shell
-        $shortcut = $wshshell.CreateShortcut("$desktop\Google Chrome.lnk")
-        $shortcut.TargetPath = $chromePath
-        $shortcut.Save()
+        if (Test-Path $chromePath) {
+          $wshshell = New-Object -ComObject WScript.Shell
+          $shortcut = $wshshell.CreateShortcut("$desktop\Google Chrome.lnk")
+          $shortcut.TargetPath = $chromePath
+          $shortcut.Save()
+        }
 
     - name: "📊 System Info & Diagnostics"
       run: |
@@ -77,15 +83,20 @@ jobs:
           Write-Host "Download or extraction failed."
         }
 
-    - name: "🖥️ Start Chrome Remote Desktop"
-      continue-on-error: true
+    - name: "🖥️ Start Chrome Remote Desktop Host"
       run: |
-        $paths = @(
+        $code = "${{ github.event.inputs.code }}"
+        $redirectUrl = "https://remotedesktop.google.com/_/oauthredirect"
+        $name = $env:COMPUTERNAME
+        $exePaths = @(
           "${Env:PROGRAMFILES(X86)}\Google\Chrome Remote Desktop\CurrentVersion\remoting_start_host.exe",
           "${Env:PROGRAMFILES}\Google\Chrome Remote Desktop\CurrentVersion\remoting_start_host.exe"
         )
-        foreach ($path in $paths) {
-          if (Test-Path $path) { & $path; return }
+        foreach ($exe in $exePaths) {
+          if (Test-Path $exe) {
+            & $exe --code="$code" --redirect-url="$redirectUrl" --name="$name"
+            exit 0
+          }
         }
         Write-Host "Chrome Remote Desktop's remoting_start_host.exe not found."
 
