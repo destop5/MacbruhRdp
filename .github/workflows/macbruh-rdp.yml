@@ -34,6 +34,24 @@ jobs:
         Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
         Start-Process -FilePath "$extractPath\VBCABLE_Setup_x64.exe" -ArgumentList "/S" -Wait
 
+    - name: "🌐 Download & Install Google Chrome"
+      run: |
+        $chromeInstaller = "$env:TEMP\ChromeSetup.exe"
+        Invoke-WebRequest -Uri "https://dl.google.com/chrome/install/latest/chrome_installer.exe" -OutFile $chromeInstaller
+        Start-Process -FilePath $chromeInstaller -ArgumentList "/silent /install" -Wait
+
+    - name: "🔗 Create Desktop Shortcut for Google Chrome"
+      run: |
+        $desktop = [Environment]::GetFolderPath("Desktop")
+        $chromePath = "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe"
+        if (!(Test-Path $chromePath)) {
+          $chromePath = "${env:ProgramFiles}\Google\Chrome\Application\chrome.exe"
+        }
+        $wshshell = New-Object -ComObject WScript.Shell
+        $shortcut = $wshshell.CreateShortcut("$desktop\Google Chrome.lnk")
+        $shortcut.TargetPath = $chromePath
+        $shortcut.Save()
+
     - name: "📊 System Info & Diagnostics"
       run: |
         Get-ComputerInfo | Out-File C:\Users\$Env:USERNAME\Documents\system-info.txt
@@ -94,6 +112,7 @@ jobs:
       if: always()
       run: |
         echo "### MACBRUH-RDP Workflow Complete" >> $env:GITHUB_STEP_SUMMARY
+        echo "- Google Chrome installed and shortcut created" >> $env:GITHUB_STEP_SUMMARY
         echo "- Audio enabled and VB-Cable installed" >> $env:GITHUB_STEP_SUMMARY
         echo "- System diagnostics uploaded" >> $env:GITHUB_STEP_SUMMARY
         echo "- Free Fire Ripper downloaded (if possible)" >> $env:GITHUB_STEP_SUMMARY
