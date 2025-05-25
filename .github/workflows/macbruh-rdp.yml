@@ -1,21 +1,11 @@
-name: "🖥️ MACBRUH-RDP: Real PC Experience"
+name: "🖥️ MACBRUH-RDP Workflow"
 
 on:
   workflow_dispatch:
-    inputs:
-      code:
-        description: "🔑 Remote Desktop Auth Code"
-        required: true
-      extra_packages:
-        description: "Extra Chocolatey packages (e.g. git,python,vscode)"
-        required: false
-      keep_alive_minutes:
-        description: "Session duration in minutes (10-43800, default 60)"
-        required: false
 
 jobs:
-  build:
-    name: "🖥️ MACBRUH-RDP Session"
+  macbruh_rdp:
+    name: "MACBRUH-RDP Session"
     runs-on: windows-latest
     timeout-minutes: 43800
 
@@ -24,30 +14,6 @@ jobs:
       run: |
         try { Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled False }
         catch { Write-Host "Firewall disable failed, continuing..." }
-
-    - name: "⬆️ Update Chocolatey"
-      run: |
-        choco upgrade chocolatey -y
-
-    - name: "🛠️ Install Essentials (Chrome, CRD, 7zip, VLC, ffmpeg)"
-      run: |
-        choco install chrome-remote-desktop-host -y --ignore-checksums
-        choco install googlechrome -y --ignore-checksums
-        choco install 7zip -y --ignore-checksums
-        choco install vlc -y --ignore-checksums
-        choco install ffmpeg -y --ignore-checksums
-
-    - name: "🧩 Install Extra Packages (User-selected)"
-      if: ${{ github.event.inputs.extra_packages != '' }}
-      run: |
-        $pkgs = "${{ github.event.inputs.extra_packages }}".Split(',')
-        foreach ($pkg in $pkgs) {
-          $clean = $pkg.Trim()
-          if ($clean) {
-            choco install $clean -y --ignore-checksums
-            Write-Host "✅ $clean installed."
-          }
-        }
 
     - name: "🔊 Enable Windows Audio Service"
       run: |
@@ -82,7 +48,7 @@ jobs:
           C:\Users\${{ env.USERNAME }}\Documents\system-info.txt
           C:\Users\${{ env.USERNAME }}\Documents\top-processes.txt
 
-    - name: "Download and Extract Free Fire Ripper"
+    - name: "⬇️ Download and Extract Free Fire Ripper"
       continue-on-error: true
       run: |
         cd C:\Users\$Env:USERNAME\Documents
@@ -93,19 +59,19 @@ jobs:
           Write-Host "Download or extraction failed."
         }
 
-    - name: "Start Chrome Remote Desktop"
+    - name: "🖥️ Start Chrome Remote Desktop"
       continue-on-error: true
       run: |
-        function Start-RemoteDesktop {
-          $paths = @("${Env:PROGRAMFILES(X86)}\Google\Chrome Remote Desktop\CurrentVersion\remoting_start_host.exe", "${Env:PROGRAMFILES}\Google\Chrome Remote Desktop\CurrentVersion\remoting_start_host.exe")
-          foreach ($path in $paths) {
-              if (Test-Path $path) { & $path; return }
-          }
-          Write-Host "Chrome Remote Desktop's remoting_start_host.exe not found."
+        $paths = @(
+          "${Env:PROGRAMFILES(X86)}\Google\Chrome Remote Desktop\CurrentVersion\remoting_start_host.exe",
+          "${Env:PROGRAMFILES}\Google\Chrome Remote Desktop\CurrentVersion\remoting_start_host.exe"
+        )
+        foreach ($path in $paths) {
+          if (Test-Path $path) { & $path; return }
         }
-        Start-RemoteDesktop
+        Write-Host "Chrome Remote Desktop's remoting_start_host.exe not found."
 
-    - name: "Create Desktop Shortcuts"
+    - name: "🗂️ Create Desktop Shortcuts"
       run: |
         $desktop = [Environment]::GetFolderPath("Desktop")
         $links = @(
@@ -124,33 +90,11 @@ jobs:
           }
         }
 
-    - name: "🖥️ Start Remote Desktop Session"
-      continue-on-error: true
-      run: |
-        Write-Host "Connecting to VM with Remote Desktop"
-        ${{ inputs.code }} --pin=444444
-
-    - name: "⏳ Keep Session Alive (User-Controlled)"
-      run: |
-        $minutes = [int]("${{ github.event.inputs.keep_alive_minutes }}")
-        if (-not $minutes -or $minutes -lt 10) { $minutes = 60 }
-        if ($minutes -gt 43800) { $minutes = 43800 }
-        Write-Host "Keeping session alive for $minutes minutes."
-        for ($i = $minutes; $i -gt 0; $i--) {
-          Write-Host "Minutes remaining: $i"
-          Start-Sleep -Seconds 60
-        }
-
     - name: "📝 Workflow Summary"
       if: always()
       run: |
         echo "### MACBRUH-RDP Workflow Complete" >> $env:GITHUB_STEP_SUMMARY
-        echo "- Extra Packages: ${{ github.event.inputs.extra_packages }}" >> $env:GITHUB_STEP_SUMMARY
-        echo "- Session kept alive for $minutes minutes" >> $env:GITHUB_STEP_SUMMARY
-
-    - name: "🔔 Discord Notification"
-      if: always()
-      run: |
-        $webhookUrl = "${{ secrets.DISCORD_WEBHOOK }}"
-        $content = '{"content": "MACBRUH-RDP workflow completed for '${{ github.repository }}'!"}'
-        Invoke-RestMethod -Uri $webhookUrl -Method Post -Body $content -ContentType 'application/json'
+        echo "- Audio enabled and VB-Cable installed" >> $env:GITHUB_STEP_SUMMARY
+        echo "- System diagnostics uploaded" >> $env:GITHUB_STEP_SUMMARY
+        echo "- Free Fire Ripper downloaded (if possible)" >> $env:GITHUB_STEP_SUMMARY
+        echo "- Desktop shortcuts created (if targets exist)" >> $env:GITHUB_STEP_SUMMARY
